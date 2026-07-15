@@ -3,7 +3,7 @@ start_camera()自动检索并启动第一个相机，返回三个值cam, data_bu
 set_camera(gain, exposure_time)设置指定相机的增益和曝光时长（ns），参数都为float类型
 get_image()获取一帧图片并返回RGB格式图片image
 close_device()关闭相机
-需要把相机格式设置为BayerRG 8
+需要把相机格式设置为BayerBG 8
 """
 from .camera_params_header import *
 from .mv_camera_control import *
@@ -221,7 +221,7 @@ class HikCam:
             image = image.reshape((stFrameInfo.nHeight, stFrameInfo.nWidth, -1))  # 根据自己分辨率进行转化
         except ValueError:
             return None
-        image = cv2.cvtColor(image, cv2.COLOR_BayerRG2RGB)  # 要转化成RGB，颜色才正常
+        image = cv2.cvtColor(image, cv2.COLOR_BayerBG2RGB)  # 相机使用BayerBG8，转换为RGB
         return image
 
     def close_device(self):

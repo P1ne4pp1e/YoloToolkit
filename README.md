@@ -13,6 +13,7 @@ The repository is organized by responsibility:
 Install the package in editable mode before running scripts:
 
 ```bash
+conda activate YOLO
 python -m pip install -e .
 python scripts/inference/yolo_pose_realtime.py --help
 ```
@@ -35,3 +36,24 @@ YOLO 全流程工具箱，面向模型训练、导出与转换、数据采集、
 ## 环境
 
 具体依赖取决于使用的模型格式和推理后端，建议在对应脚本中确认所需 Python 包及运行时版本。
+
+## 数据集运动模糊筛选
+
+针对 LabelMe 格式数据集，可按每张有标注图片中 `rectangle` 目标 ROI 的拉普拉斯方差倒数筛选运动模糊图片。模糊分数越大代表越模糊；无对应 JSON 的图片始终保留。
+
+```powershell
+py scripts/data_processing/filter_motion_blur.py `
+  dataset/raw-20260715-001-2023E-yolopose `
+  dataset/filtered-20260715-001 `
+  --no-show
+```
+
+也可使用会自动激活 `YOLO` conda 环境的批处理脚本：
+
+```bat
+scripts\data_processing\run_filter_motion_blur.bat
+```
+
+输入目录、输出目录、`YOLO` conda 环境名和可选阈值均在批处理文件开头配置。
+
+脚本会保存分布图、输出多个候选阈值的过滤占比和张数，并在终端等待输入阈值。也可以直接通过 `--threshold 0.001` 非交互执行。

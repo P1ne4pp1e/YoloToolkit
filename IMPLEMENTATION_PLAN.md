@@ -1,23 +1,41 @@
-## Stage 1: Inventory and Boundaries
-**Goal**: Classify source code, vendor SDK files, runnable scripts, and local artifacts.
-**Success Criteria**: Every tracked source file has one clear destination.
-**Tests**: Review tracked-file inventory and compile baseline Python files.
+## Stage 1: Dataset Contract
+**Goal**: Read LabelMe target rectangles and named corner keypoints safely.
+**Success Criteria**: The four semantic keypoints are validated and ordered consistently.
+**Tests**: Parse a minimal LabelMe annotation and reject incomplete targets.
 **Status**: Complete
 
-## Stage 2: Package Layout
-**Goal**: Establish a stable `src/yolo_toolkit` package and move scripts into capability-based directories.
-**Success Criteria**: Camera, inference, conversion, and utility code have separate ownership boundaries.
-**Tests**: Compile all Python source files and verify imports from the new package.
+## Stage 2: Augmentation Primitives
+**Goal**: Implement the approved normal, black-domain, cutout, and compositing augmentations.
+**Success Criteria**: Positive outputs retain all four points; incomplete targets become unlabelled negatives.
+**Tests**: Validate translation, polygon intersection, and compositing labels.
 **Status**: Complete
 
-## Stage 3: Entrypoints and Documentation
-**Goal**: Make supported commands discoverable and remove ambiguous root-level scripts.
-**Success Criteria**: README documents layout, dependencies, and representative commands.
-**Tests**: Run help/argument parsing for runnable entrypoints.
+## Stage 3: Streaming Dataset Writer
+**Goal**: Generate the configured approximately 20k dataset without retaining images in memory.
+**Success Criteria**: Output count and per-strategy quotas match configuration, with a progress bar.
+**Tests**: Generate a small temporary dataset and check its manifest.
+**Status**: In Progress
+
+## Stage 4: Visual Verification
+**Goal**: Export labelled preview images for every augmentation strategy.
+**Success Criteria**: Preview images visibly show correct corner locations and expected negative samples.
+**Tests**: Confirm preview files are generated.
+**Status**: Not Started
+
+## Stage 5: Dataset Split
+**Goal**: Create a reproducible train/validation split for the generated pose dataset.
+**Success Criteria**: Images and matching labels are copied into YOLO-compatible split directories without changing the source dataset.
+**Tests**: Verify stratification, deterministic assignment, and generated data.yaml paths.
+**Status**: In Progress
+
+## Stage 6: Pose Training Launcher
+**Goal**: Provide a double-clickable GPU training launcher for the split YOLO pose dataset.
+**Success Criteria**: The launcher activates the `YOLO` Conda environment, uses `yolo26n-pose.pt`, and stores results under `runs/pose`.
+**Tests**: Validate the batch syntax and configured dataset, model, and CUDA device paths.
 **Status**: Complete
 
-## Stage 4: Cleanup and Verification
-**Goal**: Remove obsolete planning state and verify the repository contains only intentional source and metadata.
-**Success Criteria**: No root-level Python implementation files remain; generated artifacts stay ignored.
-**Tests**: `git status`, Python compilation, and focused smoke tests.
+## Stage 7: Training Configuration Verification
+**Goal**: Confirm the launcher settings match the dataset and available RTX 4070 GPU.
+**Success Criteria**: The launcher uses the four-keypoint dataset, 640 image size, GPU 0, and a conservative 8 GB VRAM batch size.
+**Tests**: Inspect all configured variables and the dataset metadata.
 **Status**: Complete
