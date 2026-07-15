@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Local data, model, cache, and generated output
+dataset/
+images/
+test_models/
+openvino_cache/
+debug_output/
+output/
+tmp/
+*.onnx
+*.onnx.data
+*.npy
+*.engine
+*.pt
+*.pth
+*.weights
+*.bin
+*.exe
+kernel.errors.txt
+
+# Local environment files
+.env
+.env.*
+!.env.example

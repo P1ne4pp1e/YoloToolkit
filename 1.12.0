@@ -1,0 +1,7 @@
+Defaulting to user installation because normal site-packages is not writeable
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Requirement already satisfied: onnx in c:\users\p1ne4pp1e\appdata\roaming\python\python310\site-packages (1.17.0)
+Collecting numpy>=1.20 (from onnx)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/a3/dd/4b822569d6b96c39d1215dbae0582fd99954dcbcf0c1a13c61783feaca3f/numpy-2.2.6-cp310-cp310-win_amd64.whl (12.9 MB)
+Requirement already satisfied: protobuf>=3.20.2 in c:\users\p1ne4pp1e\appdata\roaming\python\python310\site-packages (from onnx) (6.30.2)
+Installing collected packages: numpy
