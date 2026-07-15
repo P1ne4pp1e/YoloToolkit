@@ -19,7 +19,7 @@ os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
 # 尝试导入海康摄像头模块
 try:
-    import hikcam as hik_cam
+    from yolo_toolkit.camera import hikvision as hik_cam
 
     HIKCAM_AVAILABLE = True
 except ImportError:

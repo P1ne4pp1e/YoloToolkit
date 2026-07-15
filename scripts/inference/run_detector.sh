@@ -88,15 +88,16 @@ echo "显示模式: $DISPLAY"
 # 应用系统优化
 if [ "$OPTIMIZE" = true ]; then
   echo "正在应用系统优化..."
-  if [ -f "./system_optimize.sh" ]; then
-    sudo ./system_optimize.sh
+  if [ -f "$(dirname "$0")/../system/optimize.sh" ]; then
+    sudo "$(dirname "$0")/../system/optimize.sh"
   else
     echo "警告: 系统优化脚本不存在"
   fi
 fi
 
 # 构建命令
-CMD="python openvino_async.py --model $MODEL --device $DEVICE --width $WIDTH --height $HEIGHT --conf $CONF"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CMD="python "$SCRIPT_DIR/openvino_async.py" --model $MODEL --device $DEVICE --width $WIDTH --height $HEIGHT --conf $CONF"
 
 # 添加额外参数
 if [ "$DISPLAY" = false ]; then

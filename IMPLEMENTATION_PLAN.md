@@ -1,17 +1,23 @@
-## Stage 1: Repository Preparation
-**Goal**: Prepare repository metadata and ignore local datasets, models, caches, and generated outputs.
-**Success Criteria**: `.gitignore` and project documentation exist; local artifacts are excluded.
-**Tests**: Verify `git status` lists only intended source files.
+## Stage 1: Inventory and Boundaries
+**Goal**: Classify source code, vendor SDK files, runnable scripts, and local artifacts.
+**Success Criteria**: Every tracked source file has one clear destination.
+**Tests**: Review tracked-file inventory and compile baseline Python files.
 **Status**: Complete
 
-## Stage 2: Git Initialization
-**Goal**: Initialize the local Git repository and create the first commit.
-**Success Criteria**: A clean initial commit exists on the default branch.
-**Tests**: Verify `git status` is clean after committing.
+## Stage 2: Package Layout
+**Goal**: Establish a stable `src/yolo_toolkit` package and move scripts into capability-based directories.
+**Success Criteria**: Camera, inference, conversion, and utility code have separate ownership boundaries.
+**Tests**: Compile all Python source files and verify imports from the new package.
 **Status**: Complete
 
-## Stage 3: GitHub Publication
-**Goal**: Create the public `YoloToolkit` repository and push the local history.
-**Success Criteria**: The GitHub remote exists and the default branch is pushed successfully.
-**Tests**: Verify the remote URL and GitHub repository availability.
-**Status**: In Progress
+## Stage 3: Entrypoints and Documentation
+**Goal**: Make supported commands discoverable and remove ambiguous root-level scripts.
+**Success Criteria**: README documents layout, dependencies, and representative commands.
+**Tests**: Run help/argument parsing for runnable entrypoints.
+**Status**: Complete
+
+## Stage 4: Cleanup and Verification
+**Goal**: Remove obsolete planning state and verify the repository contains only intentional source and metadata.
+**Success Criteria**: No root-level Python implementation files remain; generated artifacts stay ignored.
+**Tests**: `git status`, Python compilation, and focused smoke tests.
+**Status**: Complete

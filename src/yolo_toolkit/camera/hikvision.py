@@ -5,8 +5,8 @@ get_image()获取一帧图片并返回RGB格式图片image
 close_device()关闭相机
 需要把相机格式设置为BayerRG 8
 """
-from CameraParams_header import *
-from MvCameraControl_class import *
+from .camera_params_header import *
+from .mv_camera_control import *
 import numpy as np
 import cv2
 import sys

@@ -1,6 +1,6 @@
 # 导入必要的库
 import cv2
-import hikcam as hik_cam
+from yolo_toolkit.camera import hikvision as hik_cam
 import numpy as np
 import time
 import collections

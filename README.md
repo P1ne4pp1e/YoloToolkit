@@ -1,5 +1,24 @@
 # YoloToolkit
 
+## Project layout
+
+The repository is organized by responsibility:
+
+- `src/yolo_toolkit/camera`: Hikvision camera integration and vendor SDK bindings.
+- `src/yolo_toolkit/conversion`: ONNX, OpenVINO, PyTorch, and K210 conversion tools.
+- `scripts/inference`: runnable demos and real-time inference processes.
+- `scripts/system`: host performance tuning scripts.
+- `dataset/`, `images/`, `test_models/`, `output/`, and caches: local-only artifacts ignored by Git.
+
+Install the package in editable mode before running scripts:
+
+```bash
+python -m pip install -e .
+python scripts/inference/yolo_pose_realtime.py --help
+```
+
+The inference scripts intentionally keep their hardware-specific dependencies optional. Use the script matching the installed backend: Ultralytics, ONNX Runtime, OpenVINO, or OpenCV DNN.
+
 YOLO 全流程工具箱，面向模型训练、导出与转换、数据采集、数据清洗和数据增强等工作。
 
 ## 当前内容

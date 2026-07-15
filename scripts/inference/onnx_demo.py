@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
+import onnxruntime as ort
 import time
-import hikcam as hik_cam
+from yolo_toolkit.camera import hikvision as hik_cam
 from numba import jit
-from openvino.runtime import Core
 
-# 定义类别字典
+# Define class dictionary
 classes = {
     0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus',
     6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light', 10: 'fire hydrant',
@@ -67,36 +67,34 @@ def convert_boxes(boxes, x_factor, y_factor):
     return result
 
 
-class YOLOv8OpenVINO:
-    """使用OpenVINO优化的YOLOv8目标检测模型类"""
+class YOLOv8Optimized:
+    """Optimized version of YOLOv8 object detection model class"""
 
-    def __init__(self, model_path, confidence_thres=0.6, iou_thres=0.5, device="CPU"):
+    def __init__(self, onnx_model, confidence_thres=0.6, iou_thres=0.5):
         """
-        初始化YOLOv8 OpenVINO优化版本
+        Initialize YOLOv8 optimized version
 
-        参数:
-            model_path: ONNX或IR模型的路径
-            confidence_thres: 置信度阈值
-            iou_thres: IoU阈值
-            device: 推理设备，如"CPU"、"GPU"、"MYRIAD"等
+        Parameters:
+            onnx_model: Path to ONNX model
+            confidence_thres: Confidence threshold
+            iou_thres: IoU threshold
         """
         self.confidence_thres = confidence_thres
         self.iou_thres = iou_thres
         self.classes = classes
-        self.device = device
 
-        # 设置输入尺寸
+        # Set input dimensions
         self.input_width = 320
         self.input_height = 320
 
-        # 为每个类别生成颜色调色板
-        np.random.seed(42)  # 设置随机种子以保持颜色一致
+        # Generate a color palette for each class
+        np.random.seed(42)  # Set random seed for consistent colors
         self.color_palette = np.random.uniform(0, 255, size=(len(self.classes), 3))
 
-        # 加载并优化OpenVINO模型
-        self._load_model(model_path)
+        # Optimize ONNX model
+        self._optimize_model(onnx_model)
 
-        # 用于存储计时数据
+        # For storing timing data
         self.timing = {}
 
         # 预热JIT编译函数
@@ -104,33 +102,30 @@ class YOLOv8OpenVINO:
         _ = preprocess_image(dummy_img, self.input_width, self.input_height)
         _ = convert_boxes(np.array([[0.5, 0.5, 0.1, 0.1]]), 1.0, 1.0)
 
-    def _load_model(self, model_path):
-        """加载并优化OpenVINO模型"""
-        # 初始化OpenVINO Core
-        self.core = Core()
+    def _optimize_model(self, model_path):
+        """Optimize ONNX model using ONNX Runtime session options"""
+        # Define ONNX Runtime session options
+        sess_options = ort.SessionOptions()
 
-        # 读取模型
-        # 如果是ONNX格式，OpenVINO可以直接读取，或者先将其转换为IR格式
-        self.model = self.core.read_model(model_path)
+        # Enable graph optimization
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
 
-        # 配置推理请求
-        # 启用性能优化
-        self.compiled_model = self.core.compile_model(
-            model=self.model,
-            device_name=self.device,
-            config={
-                "PERFORMANCE_HINT": "THROUGHPUT",  # 更改为吞吐量优化
-                "NUM_STREAMS": "AUTO",  # 自动选择最佳流数
-                "INFERENCE_PRECISION_HINT": "f16"  # 使用FP16精度以提高速度
-            }
-        )
+        # Enable parallel execution
+        sess_options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
 
-        # 获取模型输入和输出信息
-        self.input_layer = self.compiled_model.input(0)
-        self.output_layer = self.compiled_model.output(0)
+        # Enable memory optimization
+        sess_options.enable_mem_pattern = True
+        sess_options.enable_mem_reuse = True
 
-        # 获取输入形状
-        self.input_shape = self.input_layer.shape
+        # Enable CPU thread settings (adjust based on your hardware)
+        sess_options.intra_op_num_threads = 8  # Threads for internal operations
+        sess_options.inter_op_num_threads = 4  # Threads for node parallelism
+
+        # Create optimized inference session
+        providers = ["CPUExecutionProvider"]
+        self.session = ort.InferenceSession(model_path, sess_options=sess_options, providers=providers)
+        self.input_name = self.session.get_inputs()[0].name
+        self.input_shape = self.session.get_inputs()[0].shape
 
     def preprocess(self, img):
         """使用Numba JIT优化的预处理"""
@@ -155,33 +150,33 @@ class YOLOv8OpenVINO:
         return input_tensor
 
     def postprocess(self, image, outputs):
-        """后处理优化版本，使用向量化操作代替循环"""
+        """Postprocessing optimized version, using vectorized operations instead of loops"""
         start_time = time.time()
 
-        # 将输出转换为更易处理的形式 [8400, 84]
-        predictions = np.squeeze(outputs).T
+        # Transpose outputs to a more processable form [8400, 84]
+        predictions = np.squeeze(outputs[0]).T
 
-        # 获取预测数量
+        # Get number of predictions
         num_predictions = predictions.shape[0]
 
-        # 使用向量化操作获取最大置信度和相应的类ID
-        scores = predictions[:, 4:]  # 所有候选框的所有类别分数 [8400, 80]
-        class_ids = np.argmax(scores, axis=1)  # 每个候选框的最佳类别ID [8400]
-        confidences = np.max(scores, axis=1)  # 每个候选框的最佳置信度 [8400]
+        # Use vectorized operations to get maximum confidence and corresponding class ID
+        scores = predictions[:, 4:]  # All class scores for all candidate boxes [8400, 80]
+        class_ids = np.argmax(scores, axis=1)  # Best class ID for each candidate box [8400]
+        confidences = np.max(scores, axis=1)  # Best confidence for each candidate box [8400]
 
-        # 应用置信度阈值筛选
+        # Apply confidence threshold filter
         mask = confidences > self.confidence_thres
 
-        # 提取满足阈值的边界框和类ID
-        filtered_boxes = predictions[mask, :4]  # 满足置信度阈值的框 [n, 4]
-        filtered_class_ids = class_ids[mask]  # 满足置信度阈值的类ID [n]
-        filtered_confidences = confidences[mask]  # 满足阈值的置信度值 [n]
+        # Extract bounding boxes and class IDs that meet the threshold
+        filtered_boxes = predictions[mask, :4]  # Boxes that meet confidence threshold [n, 4]
+        filtered_class_ids = class_ids[mask]  # Class IDs that meet confidence threshold [n]
+        filtered_confidences = confidences[mask]  # Confidence values that meet threshold [n]
 
-        # 计算缩放因子
+        # Calculate scaling factors
         x_factor = self.img_width / self.input_width
         y_factor = self.img_height / self.input_height
 
-        # 计算实际像素坐标 - 向量化操作
+        # Calculate actual pixel coordinates - vectorized operations
         if len(filtered_boxes) > 0:
             # 使用JIT编译的函数转换坐标
             boxes = convert_boxes(filtered_boxes, x_factor, y_factor)
@@ -191,10 +186,10 @@ class YOLOv8OpenVINO:
         self.timing['Filtering Candidates'] = time.time() - start_time
         nms_start = time.time()
 
-        # 应用非最大抑制
+        # Apply non-maximum suppression
         indices = []
         if len(boxes) > 0:
-            # 将边界框转换为xyxy格式，用于NMS
+            # Convert bounding boxes to xyxy format for NMS
             boxes_xyxy = np.zeros_like(boxes)
             boxes_xyxy[:, 0] = boxes[:, 0]  # x1
             boxes_xyxy[:, 1] = boxes[:, 1]  # y1
@@ -211,24 +206,24 @@ class YOLOv8OpenVINO:
         self.timing['Non-maximum Suppression'] = time.time() - nms_start
         draw_start = time.time()
 
-        # 绘制检测结果
+        # Draw detection results
         result_image = image.copy()
         if len(indices) > 0:
             for i in indices:
-                # OpenCV版本兼容性
+                # OpenCV version compatibility
                 if isinstance(i, (list, np.ndarray)):
                     i = i[0]
 
-                # 获取边界框和类别
+                # Get bounding box and class
                 x, y, w, h = boxes[i]
                 class_id = int(filtered_class_ids[i])
                 confidence = filtered_confidences[i]
 
-                # 绘制边界框
+                # Draw bounding box
                 color = tuple(map(int, self.color_palette[class_id % len(self.color_palette)]))
                 cv2.rectangle(result_image, (x, y), (x + w, y + h), color, 2)
 
-                # 绘制标签
+                # Draw label
                 label = f"{self.classes[class_id]}: {confidence:.2f}"
                 (text_width, text_height), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
                 cv2.rectangle(result_image, (x, y - text_height - 5), (x + text_width, y), color, -1)
@@ -238,84 +233,72 @@ class YOLOv8OpenVINO:
         return result_image
 
     def predict(self, img):
-        """执行预测，返回结果图像"""
-        # 开始总计时
+        """Perform prediction, return result image"""
+        # Start total timing
         total_start = time.time()
 
-        # 重置计时字典
+        # Reset timing dictionary
         self.timing = {}
 
-        # 预处理图像
+        # Preprocess image
         input_tensor = self.preprocess(img)
 
-        # 执行推理 - 使用异步推理
+        # Execute inference
         infer_start = time.time()
-        infer_req = self.compiled_model.create_infer_request()
-        infer_req.start_async(inputs={self.input_layer.any_name: input_tensor})
-        infer_req.wait()
-        outputs = infer_req.get_output_tensor(0).data
+        outputs = self.session.run(None, {self.input_name: input_tensor})
         self.timing['Model Inference'] = time.time() - infer_start
 
-        # 后处理并绘制结果
+        # Postprocess and draw results
         result_image = self.postprocess(img, outputs)
 
-        # 计算总时间和其他组件所占比例
+        # Calculate total time
         self.timing['Total Time'] = time.time() - total_start
 
-        # 计算帧内开销 (非渲染时间)
-        non_rendering_time = sum([
-            t for step, t in self.timing.items()
-            if step != 'Total Time'
-        ])
-        self.timing['Other Overhead'] = self.timing['Total Time'] - non_rendering_time
-
-        # 显示计时信息
+        # Display timing information
         y_pos = 30
         for step, t in self.timing.items():
             text = f"{step}: {t * 1000:.2f} ms"
             cv2.putText(result_image, text, (10, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             y_pos += 30
 
-        # 打印控制台信息
-        for step, t in self.timing.items():
-            print(f"{step}: {t * 1000:.2f} ms")
-        print("-" * 30)
+        # Print console information
+        # for step, t in self.timing.items():
+        #     print(f"{step}: {t * 1000:.2f} ms")
+        # print("-" * 30)
 
         return result_image
 
 
 if __name__ == "__main__":
-    # 配置参数
-    model_path = "test_models/yolo11n.onnx"  # 或者使用ONNX模型: "yolo11n.onnx"
-    confidence_threshold = 0.4
+    # Configure parameters
+    model_path = "test_models/yolo11n_trained_05.onnx"
+    confidence_threshold = 0.7
     iou_threshold = 0.7
-    device = "CPU"  # 可以根据需要更改为GPU、MYRIAD（NCS2）等
 
-    # 创建检测器实例
-    detector = YOLOv8OpenVINO(model_path, confidence_threshold, iou_threshold, device)
+    # Create detector instance
+    detector = YOLOv8Optimized(model_path, confidence_threshold, iou_threshold)
 
-    # 用于计算FPS
+    # For calculating FPS
     fps = 30
     frames = 0
     T1 = time.perf_counter()
     T2 = T1
 
-    # 创建窗口
-    # cv2.namedWindow("YOLOv8 OpenVINO", cv2.WINDOW_NORMAL)
+    # Create window
+    cv2.namedWindow("YOLOv8 Optimized", cv2.WINDOW_NORMAL)
 
     cam = hik_cam.HikCam()
     cam.start_camera()
-    cam.set_camera(15.0, 3000)
+    cam.set_camera(15.0, 2000)
 
     while True:
-        st = time.time()
-        # 读取相机帧
+        # Read camera frame
         frame = cam.get_image(False)
 
-        # 执行预测
+        # Perform prediction
         result = detector.predict(frame)
 
-        # 计算FPS
+        # Calculate FPS
         frames += 1
         if frames >= int(fps / 2) + 1:
             T2 = time.perf_counter()
@@ -323,15 +306,14 @@ if __name__ == "__main__":
             T1 = time.perf_counter()
             frames = 0
 
-        # 显示FPS
+        # Display FPS
         cv2.putText(result, f"FPS: {fps}", (10, result.shape[0] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
+        # Display result
+        cv2.imshow("YOLOv8 Optimized", result)
 
-        # 显示结果
-        cv2.imshow("YOLOv8 OpenVINO", result)
-        #
-        # 按q退出
+        # Press q to quit
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 

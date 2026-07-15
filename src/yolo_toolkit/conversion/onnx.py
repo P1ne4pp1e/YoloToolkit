@@ -1,6 +1,4 @@
-import hikcam as hik_cam
 from ultralytics import YOLO
-import cv2
 
 def convert_to_onnx():
     # 加载模型

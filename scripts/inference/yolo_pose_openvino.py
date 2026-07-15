@@ -14,7 +14,7 @@ from numba import jit, prange
 
 # Try to import HikVision camera module
 try:
-    import hikcam as hik_cam
+    from yolo_toolkit.camera import hikvision as hik_cam
 
     HIKCAM_AVAILABLE = True
 except ImportError:
